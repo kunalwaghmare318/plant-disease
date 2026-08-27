@@ -19,7 +19,6 @@ COPY --from=frontend-builder /app/out ./out
 
 # Copy backend application and models
 COPY server.py .
-COPY plant_disease_cnn.pth .
 COPY resnet18_plant.pth .
 
 # Render assigns dynamic PORT environment variable

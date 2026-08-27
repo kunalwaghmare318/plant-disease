@@ -276,21 +276,27 @@ class ResNet18(nn.Module):
 print("Loading neural network weights...")
 device = torch.device("cpu")
 
+cnn_loaded = False
 cnn_model = PlantDiseaseCNN().to(device)
-try:
-    cnn_model.load_state_dict(torch.load("plant_disease_cnn.pth", map_location=device, weights_only=True))
-    cnn_model.eval()
-    print("Custom CNN loaded successfully.")
-except Exception as e:
-    print(f"Warning loading CNN: {e}")
+if os.path.exists("plant_disease_cnn.pth"):
+    try:
+        cnn_model.load_state_dict(torch.load("plant_disease_cnn.pth", map_location=device, weights_only=True))
+        cnn_model.eval()
+        cnn_loaded = True
+        print("Custom CNN loaded successfully.")
+    except Exception as e:
+        print(f"Warning loading CNN: {e}")
 
+resnet_loaded = False
 resnet_model = ResNet18(38).to(device)
-try:
-    resnet_model.load_state_dict(torch.load("resnet18_plant.pth", map_location=device, weights_only=True))
-    resnet_model.eval()
-    print("ResNet-18 loaded successfully.")
-except Exception as e:
-    print(f"Warning loading ResNet: {e}")
+if os.path.exists("resnet18_plant.pth"):
+    try:
+        resnet_model.load_state_dict(torch.load("resnet18_plant.pth", map_location=device, weights_only=True))
+        resnet_model.eval()
+        resnet_loaded = True
+        print("ResNet-18 loaded successfully.")
+    except Exception as e:
+        print(f"Warning loading ResNet: {e}")
 
 # Preprocessing Pipeline (Resize 224x224, Normalize with ImageNet stats)
 MEAN = np.array([0.485, 0.456, 0.406], dtype=np.float32).reshape(3, 1, 1)
@@ -320,8 +326,13 @@ async def predict(
     if not content:
         raise HTTPException(status_code=400, detail="Empty image file received.")
 
-    # Select model
-    active_model = resnet_model if model_choice.lower() == "resnet" else cnn_model
+    # Select model (fallback to ResNet if CNN weights not present)
+    if model_choice.lower() == "cnn" and cnn_loaded:
+        active_model = cnn_model
+        model_name = "Custom 3-Layer CNN"
+    else:
+        active_model = resnet_model
+        model_name = "ResNet-18 (Transfer Learning)"
 
     start_time = time.perf_counter()
     tensor_input = preprocess_image(content)

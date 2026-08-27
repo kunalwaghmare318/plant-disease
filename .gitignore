@@ -32,6 +32,8 @@ next-env.d.ts
 __pycache__/
 *.pyc
 
-# large model backups (models stay in backend)
+# large model backups
 *.pth
+!resnet18_plant.pth
+
 
