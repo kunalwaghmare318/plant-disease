@@ -336,7 +336,7 @@ def preprocess_image(image_bytes: bytes) -> torch.Tensor:
     img_tensor = (img_tensor - MEAN) / STD
     return torch.tensor(img_tensor, dtype=torch.float32).unsqueeze(0)
 
-@app.get("/")
+@app.get("/api/health")
 def health():
     return {"status": "online", "service": "Plant Disease AI Inference Engine"}
 
