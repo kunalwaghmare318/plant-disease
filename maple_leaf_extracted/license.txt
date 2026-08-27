@@ -1,8 +1,0 @@
-Model Information:
-* title:	Maple Leaf
-* source:	https://sketchfab.com/3d-models/maple-leaf-c06c7cf93eda435dbc5cccf7511907ac
-* author:	Zacxophone (https://sketchfab.com/Zacxophone)
-
-Model License:
-* license type:	SKETCHFAB Standard (https://sketchfab.com/licenses)
-* requirements:	Under basic restrictions, use worldwide, on all types of media, commercially or not, and in all types of derivative works
