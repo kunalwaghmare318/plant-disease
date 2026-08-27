@@ -8,6 +8,7 @@ import torch
 import torch.nn as nn
 from fastapi import FastAPI, File, Form, UploadFile, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 import uvicorn
 
 app = FastAPI(title="Plant Disease AI Diagnostics API")
@@ -372,6 +373,10 @@ async def predict(
         "top3": top3_list
     }
 
+# Mount static frontend build if 'out' directory exists
+if os.path.exists("out"):
+    app.mount("/", StaticFiles(directory="out", html=True), name="static")
+
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 7860))
+    port = int(os.environ.get("PORT", 8000))
     uvicorn.run("server:app", host="0.0.0.0", port=port, reload=False)
