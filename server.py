@@ -272,31 +272,57 @@ class ResNet18(nn.Module):
         x = self.fc(x)
         return x
 
+# Limit threads to keep memory low on free tier
+torch.set_num_threads(1)
+try:
+    torch.set_num_interop_threads(1)
+except Exception:
+    pass
+
 # Initialize and load models
 print("Loading neural network weights...")
 device = torch.device("cpu")
 
 cnn_loaded = False
-cnn_model = PlantDiseaseCNN().to(device)
+cnn_model = None
+
+resnet_loaded = False
+resnet_model = None
+
+if os.path.exists("resnet18_plant.pth"):
+    try:
+        model = ResNet18(38).to(device)
+        weights = torch.load("resnet18_plant.pth", map_location=device, weights_only=True)
+        model.load_state_dict(weights)
+        del weights
+        import gc
+        gc.collect()
+        
+        # Quantize for 75% RAM reduction and faster CPU inference
+        resnet_model = torch.quantization.quantize_dynamic(model, {nn.Linear}, dtype=torch.qint8)
+        resnet_model.eval()
+        resnet_loaded = True
+        print("ResNet-18 loaded & quantized successfully.")
+    except Exception as e:
+        print(f"Warning loading ResNet: {e}")
+        # Fallback to standard unquantized if quantization fails
+        try:
+            resnet_model = ResNet18(38).to(device)
+            resnet_model.load_state_dict(torch.load("resnet18_plant.pth", map_location=device, weights_only=True))
+            resnet_model.eval()
+            resnet_loaded = True
+        except Exception as e2:
+            print(f"Error fallback ResNet: {e2}")
+
 if os.path.exists("plant_disease_cnn.pth"):
     try:
+        cnn_model = PlantDiseaseCNN().to(device)
         cnn_model.load_state_dict(torch.load("plant_disease_cnn.pth", map_location=device, weights_only=True))
         cnn_model.eval()
         cnn_loaded = True
         print("Custom CNN loaded successfully.")
     except Exception as e:
         print(f"Warning loading CNN: {e}")
-
-resnet_loaded = False
-resnet_model = ResNet18(38).to(device)
-if os.path.exists("resnet18_plant.pth"):
-    try:
-        resnet_model.load_state_dict(torch.load("resnet18_plant.pth", map_location=device, weights_only=True))
-        resnet_model.eval()
-        resnet_loaded = True
-        print("ResNet-18 loaded successfully.")
-    except Exception as e:
-        print(f"Warning loading ResNet: {e}")
 
 # Preprocessing Pipeline (Resize 224x224, Normalize with ImageNet stats)
 MEAN = np.array([0.485, 0.456, 0.406], dtype=np.float32).reshape(3, 1, 1)
@@ -337,7 +363,7 @@ async def predict(
     start_time = time.perf_counter()
     tensor_input = preprocess_image(content)
 
-    with torch.no_grad():
+    with torch.inference_mode():
         logits = active_model(tensor_input)
         probs = torch.softmax(logits, dim=1).squeeze(0)
 
